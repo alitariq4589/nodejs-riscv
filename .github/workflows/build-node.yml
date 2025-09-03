@@ -1,0 +1,87 @@
+name: Build .NET SDK
+
+on: 
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 1,30 * *'
+
+jobs:
+  run:
+    runs-on: pioneer-box
+    container:
+      image: riscv64/ubuntu:24.04
+      
+
+    steps:
+
+    - name: Install Dependencies
+      run: |
+        apt-get update
+        apt-get install -y git curl libssl-dev libkrb5-dev liblttng-ust-dev libnuma-dev pkg-config zlib1g-dev libicu-dev wget tar python3 g++ gcc make python3-pip build-essential python3-setuptools
+
+    - name: Clone repositories
+      run: |
+        git clone --branch main --single-branch --depth=1 https://github.com/nodejs/node.git
+
+    - name: Configure
+      run: |
+        cd node
+        ./configure --prefix=$(readlink -f ../installed_binaries) --dest-cpu=riscv64
+
+    - name: make
+      run: |
+        cd node
+        make -j$(nproc)
+
+    - name: make install
+      run: |
+        cd node
+        make install
+    
+    - name: Verify installation
+      run: |
+        ../installed_binaries/bin/node -v
+    
+    - name: Get Node.js version
+      id: node-version
+      run: |
+        cd node
+        echo "NODE_VERSION=$(./node -v | cut -c 2-)" >> $GITHUB_OUTPUT
+
+    - name: Package binaries
+      run: |
+        cd installed_binaries
+        tar -czf nodejs-${{ steps.node-version.outputs.NODE_VERSION }}-riscv64-linux.tar.gz *
+
+    - name: Create Tag
+      run: |
+        git tag v${{ steps.node-version.outputs.NODE_VERSION }}-riscv64
+        git push origin v${{ steps.node-version.outputs.NODE_VERSION }}-riscv64
+
+    - name: Create Release
+      uses: actions/create-release@v1
+      if: github.event_name == 'workflow_dispatch'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.node-version.outputs.NODE_VERSION }}-riscv64
+        release_name: Node.js ${{ steps.node-version.outputs.NODE_VERSION }} RISC-V
+        body: |
+          Node.js v${{ steps.node-version.outputs.NODE_VERSION }} built for RISC-V 64-bit architecture
+          
+          Platform: linux-riscv64
+          Version: ${{ steps.node-version.outputs.NODE_VERSION }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      if: github.event_name == 'workflow_dispatch'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: installed_binaries/nodejs-${{ steps.node-version.outputs.NODE_VERSION }}-riscv64-linux.tar.gz
+        asset_name: nodejs-${{ steps.node-version.outputs.NODE_VERSION }}-riscv64-linux.tar.gz
+        asset_content_type: application/gzip
+
