@@ -17,7 +17,16 @@ jobs:
     - name: Install Dependencies
       run: |
         apt-get update
-        apt-get install -y git curl libssl-dev libkrb5-dev liblttng-ust-dev libnuma-dev pkg-config zlib1g-dev libicu-dev wget tar python3 g++ gcc make python3-pip build-essential python3-setuptools
+        apt-get install -y git curl libssl-dev libkrb5-dev liblttng-ust-dev libnuma-dev pkg-config zlib1g-dev libicu-dev wget tar python3 g++-14 gcc-14 make python3-pip build-essential python3-setuptools
+    
+    - name: Change the GCC version to 14
+      run: |
+       update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+       update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+       update-alternatives --set gcc /usr/bin/gcc-14
+       update-alternatives --set g++ /usr/bin/g++-14
+       gcc --version
+       g++ --version
 
     - name: Setup Direcories
       run: |
@@ -31,7 +40,7 @@ jobs:
     - name: Configure
       run: |
         cd node
-        ./configure --prefix=$(readlink -f ../installed_binaries) --openssl-no-asm --dest-cpu=riscv64
+        ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) --openssl-no-asm --dest-cpu=riscv64
 
     - name: make
       run: |
@@ -45,7 +54,7 @@ jobs:
     
     - name: Verify installation
       run: |
-        cd installed_binaries
+        cd $GITHUB_WORKSPACE/installed_binaries
         ./bin/node -v
         ./bin/npm -v
         ./bin/npx -v
