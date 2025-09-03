@@ -26,7 +26,7 @@ jobs:
     - name: Configure
       run: |
         cd node
-        ./configure --prefix=$(readlink -f ../installed_binaries) --dest-cpu=riscv64
+        ./configure --prefix=$(readlink -f ../installed_binaries) --openssl-no-asm --dest-cpu=riscv64
 
     - name: make
       run: |
