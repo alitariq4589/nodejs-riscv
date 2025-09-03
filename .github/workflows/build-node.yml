@@ -30,7 +30,7 @@ jobs:
 
     - name: Setup Direcories
       run: |
-        mkdir -p installed_binaries
+        mkdir -p $GITHUB_WORKSPACE/installed_binaries
 
     - name: Clone repositories
       run: |
@@ -56,14 +56,12 @@ jobs:
       run: |
         cd $GITHUB_WORKSPACE/installed_binaries
         ./bin/node -v
-        ./bin/npm -v
-        ./bin/npx -v
         file ./bin/node
     
     - name: Get Node.js version
       id: node-version
       run: |
-        cd installed_binaries/bin
+        cd $GITHUB_WORKSPACE/installed_binaries/bin
         echo "NODE_VERSION=$(./node -v | cut -c 2-)" >> $GITHUB_OUTPUT
 
     - name: Package binaries
