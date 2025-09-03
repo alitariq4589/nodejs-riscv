@@ -19,8 +19,13 @@ jobs:
         apt-get update
         apt-get install -y git curl libssl-dev libkrb5-dev liblttng-ust-dev libnuma-dev pkg-config zlib1g-dev libicu-dev wget tar python3 g++ gcc make python3-pip build-essential python3-setuptools
 
+    - name: Setup Direcories
+      run: |
+        mkdir -p installed_binaries
+
     - name: Clone repositories
       run: |
+        rm -rf node
         git clone --branch main --single-branch --depth=1 https://github.com/nodejs/node.git
 
     - name: Configure
@@ -40,12 +45,16 @@ jobs:
     
     - name: Verify installation
       run: |
-        ../installed_binaries/bin/node -v
+        cd installed_binaries
+        ./bin/node -v
+        ./bin/npm -v
+        ./bin/npx -v
+        file ./bin/node
     
     - name: Get Node.js version
       id: node-version
       run: |
-        cd node
+        cd installed_binaries/bin
         echo "NODE_VERSION=$(./node -v | cut -c 2-)" >> $GITHUB_OUTPUT
 
     - name: Package binaries
