@@ -1,4 +1,4 @@
-name: Build .NET SDK
+name: Build Nodejs for RISC-V
 
 on: 
   workflow_dispatch:
