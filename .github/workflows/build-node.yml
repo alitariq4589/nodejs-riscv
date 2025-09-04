@@ -8,27 +8,12 @@ on:
 jobs:
   run:
     runs-on: pioneer-box
-    container:
-      image: riscv64/ubuntu:24.04
 
     # Add permissions for tags and releases
     permissions:
       contents: write
 
     steps:
-      - name: Install Dependencies
-        run: |
-          apt-get update
-          apt-get install -y git curl libssl-dev libkrb5-dev liblttng-ust-dev libnuma-dev pkg-config zlib1g-dev libicu-dev wget tar python3 g++-14 gcc-14 make python3-pip build-essential python3-setuptools file
-
-      - name: Change the GCC version to 14
-        run: |
-          update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
-          update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
-          update-alternatives --set gcc /usr/bin/gcc-14
-          update-alternatives --set g++ /usr/bin/g++-14
-          gcc --version
-          g++ --version
 
       - name: Setup Direcories
         run: |
