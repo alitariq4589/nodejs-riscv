@@ -4,43 +4,61 @@ on:
   workflow_run:
     workflows: ["Build Nodejs for RISC-V"]
     types: [completed]
-    
 
 jobs:
   create-release:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest  # Or pioneer-box if needed for some reason
+    runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
-      
-      - name: Fetch outputs from the completed workflow run
+        uses: actions/checkout@v4
+
+      - name: Fetch outputs from the last successful build
         id: fetch-outputs
-        # This action uses the GitHub API to get the outputs from the previous workflow run.
         uses: actions/github-script@v6
         with:
           script: |
-            const runId = context.payload.workflow_run.id;
-            const workflowRun = await github.rest.actions.getWorkflowRun({
+            // Get the workflow run that triggered this workflow
+            const workflowRunId = context.payload.workflow_run.id;
+
+            // List all jobs for the workflow run
+            const jobsResponse = await github.rest.actions.listJobsForWorkflowRun({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              run_id: runId
+              run_id: workflowRunId
             });
-            const buildJob = workflowRun.data.jobs.find(job => job.name === 'run');
-            const outputs = buildJob.outputs;
 
-            core.setOutput('tag_name', outputs.tag_name);
-            core.setOutput('release_name', outputs.release_name);
-            core.setOutput('asset_name', outputs.asset_name);
-      
+            // Find the job named 'run'
+            const buildJob = jobsResponse.data.jobs.find(job => job.name === 'run');
+
+            if (!buildJob) {
+              throw new Error("Job named 'run' not found in workflow run");
+            }
+
+            // Collect outputs from all steps
+            const stepOutputs = {};
+            for (const step of buildJob.steps) {
+              if (step.outputs) {
+                Object.assign(stepOutputs, step.outputs);
+              }
+            }
+
+            // Make sure required outputs exist
+            if (!stepOutputs.tag_name || !stepOutputs.release_name || !stepOutputs.asset_name) {
+              throw new Error("Required outputs (tag_name, release_name, asset_name) not found in job steps");
+            }
+
+            core.setOutput('tag_name', stepOutputs.tag_name);
+            core.setOutput('release_name', stepOutputs.release_name);
+            core.setOutput('asset_name', stepOutputs.asset_name);
+
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ steps.fetch-outputs.outputs.asset_name }}
-          # The run-id tells this action which workflow run to download from.
           run-id: ${{ github.event.workflow_run.id }}
           path: ${{ github.workspace }}
 
@@ -53,7 +71,7 @@ jobs:
 
       - name: Create Release
         id: create-release
-        uses: actions/create-release@v3
+        uses: actions/create-release@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
