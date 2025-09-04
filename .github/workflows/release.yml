@@ -1,0 +1,77 @@
+name: Create Release from Artifact
+
+on:
+  workflow_run:
+    workflows: ["Build Nodejs for RISC-V"]
+    types: [completed]
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest  # Or pioneer-box if needed for some reason
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Fetch outputs from the completed workflow run
+        id: fetch-outputs
+        # This action uses the GitHub API to get the outputs from the previous workflow run.
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const runId = context.payload.workflow_run.id;
+            const workflowRun = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: runId
+            });
+            const buildJob = workflowRun.data.jobs.find(job => job.name === 'run');
+            const outputs = buildJob.outputs;
+
+            core.setOutput('tag_name', outputs.tag_name);
+            core.setOutput('release_name', outputs.release_name);
+            core.setOutput('asset_name', outputs.asset_name);
+      
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ steps.fetch-outputs.outputs.asset_name }}
+          # The run-id tells this action which workflow run to download from.
+          run-id: ${{ github.event.workflow_run.id }}
+          path: ${{ github.workspace }}
+
+      - name: Create Tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.fetch-outputs.outputs.tag_name }}
+          git push origin ${{ steps.fetch-outputs.outputs.tag_name }}
+
+      - name: Create Release
+        id: create-release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.fetch-outputs.outputs.tag_name }}
+          release_name: ${{ steps.fetch-outputs.outputs.release_name }}
+          body: |
+            Node.js ${{ steps.fetch-outputs.outputs.tag_name }} built for RISC-V 64-bit architecture
+
+            Platform: linux-riscv64
+            Version: ${{ steps.fetch-outputs.outputs.tag_name }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: ${{ github.workspace }}/${{ steps.fetch-outputs.outputs.asset_name }}
+          asset_name: ${{ steps.fetch-outputs.outputs.asset_name }}
+          asset_content_type: application/gzip
