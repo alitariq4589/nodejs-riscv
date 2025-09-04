@@ -17,7 +17,7 @@ jobs:
     - name: Install Dependencies
       run: |
         apt-get update
-        apt-get install -y git curl libssl-dev libkrb5-dev liblttng-ust-dev libnuma-dev pkg-config zlib1g-dev libicu-dev wget tar python3 g++-14 gcc-14 make python3-pip build-essential python3-setuptools
+        apt-get install -y git curl libssl-dev libkrb5-dev liblttng-ust-dev libnuma-dev pkg-config zlib1g-dev libicu-dev wget tar python3 g++-14 gcc-14 make python3-pip build-essential python3-setuptools file
     
     - name: Change the GCC version to 14
       run: |
