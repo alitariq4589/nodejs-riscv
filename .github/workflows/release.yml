@@ -1,13 +1,10 @@
 name: Create Release from Artifact
 
 on:
-  workflow_run:
-    workflows: ["Build Nodejs for RISC-V"]
-    types: [completed]
+  workflow_dispatch:
 
 jobs:
   create-release:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -16,58 +13,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fetch outputs from the last successful build
-        id: fetch-outputs
-        uses: actions/github-script@v6
-        with:
-          script: |
-            // Get the workflow run that triggered this workflow
-            const workflowRunId = context.payload.workflow_run.id;
-
-            // List all jobs for the workflow run
-            const jobsResponse = await github.rest.actions.listJobsForWorkflowRun({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: workflowRunId
-            });
-
-            // Find the job named 'run'
-            const buildJob = jobsResponse.data.jobs.find(job => job.name === 'run');
-
-            if (!buildJob) {
-              throw new Error("Job named 'run' not found in workflow run");
-            }
-
-            // Collect outputs from all steps
-            const stepOutputs = {};
-            for (const step of buildJob.steps) {
-              if (step.outputs) {
-                Object.assign(stepOutputs, step.outputs);
-              }
-            }
-
-            // Make sure required outputs exist
-            if (!stepOutputs.tag_name || !stepOutputs.release_name || !stepOutputs.asset_name) {
-              throw new Error("Required outputs (tag_name, release_name, asset_name) not found in job steps");
-            }
-
-            core.setOutput('tag_name', stepOutputs.tag_name);
-            core.setOutput('release_name', stepOutputs.release_name);
-            core.setOutput('asset_name', stepOutputs.asset_name);
-
-      - name: Download artifact
+      - name: Download artifact from last successful workflow
         uses: actions/download-artifact@v4
         with:
-          name: ${{ steps.fetch-outputs.outputs.asset_name }}
-          run-id: ${{ github.event.workflow_run.id }}
+          name: nodejs-25.0.0-pre-riscv64-linux.tar.gz
+          run-id: 14   # Hardcoded workflow run ID
           path: ${{ github.workspace }}
 
       - name: Create Tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag ${{ steps.fetch-outputs.outputs.tag_name }}
-          git push origin ${{ steps.fetch-outputs.outputs.tag_name }}
+          git tag 25.0.0-pre
+          git push origin 25.0.0-pre
 
       - name: Create Release
         id: create-release
@@ -75,13 +33,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.fetch-outputs.outputs.tag_name }}
-          release_name: ${{ steps.fetch-outputs.outputs.release_name }}
+          tag_name: 25.0.0-pre
+          release_name: "Scheduled Release 2025-09-04, Version 25.0.0-pre"
           body: |
-            Node.js ${{ steps.fetch-outputs.outputs.tag_name }} built for RISC-V 64-bit architecture
+            Node.js 25.0.0-pre built for RISC-V 64-bit architecture
 
             Platform: linux-riscv64
-            Version: ${{ steps.fetch-outputs.outputs.tag_name }}
+            Version: 25.0.0-pre
           draft: false
           prerelease: false
 
@@ -91,6 +49,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/${{ steps.fetch-outputs.outputs.asset_name }}
-          asset_name: ${{ steps.fetch-outputs.outputs.asset_name }}
+          asset_path: ${{ github.workspace }}/nodejs-25.0.0-pre-riscv64-linux.tar.gz
+          asset_name: nodejs-25.0.0-pre-riscv64-linux.tar.gz
           asset_content_type: application/gzip
