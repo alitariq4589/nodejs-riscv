@@ -19,8 +19,6 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout pipeline repository
-        uses: actions/checkout@v3
 
       - name: Setup Direcories
         run: |
@@ -69,7 +67,7 @@ jobs:
           tar -czf ${{ steps.get-version.outputs.asset_path }} -C ${{ github.workspace }}/installed_binaries .
       
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.get-version.outputs.asset_name }}
           path: ${{ steps.get-version.outputs.asset_path }}
