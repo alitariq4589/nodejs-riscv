@@ -27,48 +27,48 @@ jobs:
         id: get-latest-tag
         run: |
           set -eux
-      
+
           # Tweak Git to be more resilient on CI
           git config --global http.postBuffer 524288000
           git config --global http.maxRequests 2
           git config --global core.compression 0
-      
+
           rm -rf node
           git clone --depth=1 --no-tags https://github.com/nodejs/node.git
           cd node
-      
+
           # Fetch only tag references (without full history)
           git fetch --tags --depth=1
-      
+
           LATEST_TAG=$(git tag -l "v*" | sort -V | tail -n 1)
           echo "Checking out $LATEST_TAG"
-      
+
           # Fetch and checkout just that tag commit (still shallow)
           git fetch --depth=1 origin tag $LATEST_TAG
           git checkout FETCH_HEAD
-      
+
           echo "tag_name=$LATEST_TAG" >> "$GITHUB_OUTPUT"
-      
+
           # Produce dummy artifact
           cd "$GITHUB_WORKSPACE/installed_binaries"
           echo "Nodejs build release by Cloud-V" > nodejs-27-riscv64-linux.tar.gz
           echo "tag_name=$LATEST_TAG" >> "$GITHUB_OUTPUT"
-      
+
             # - name: Configure
             #   run: |
             #     cd node
             #     ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) --openssl-no-asm --dest-cpu=riscv64
-      
+
             # - name: Build
             #   run: |
             #     cd node
             #     make -j$(nproc)
-      
+
             # - name: Install
             #   run: |
             #     cd node
             #     make install
-      
+
             # - name: Verify installation
             #   run: |
             #     cd $GITHUB_WORKSPACE/installed_binaries
@@ -112,6 +112,6 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "Manual Release ${{ github.run_number }}"
+          tag_name: ${{ steps.get-latest-tag.outputs.tag_name }}
           files: |
-            ${{ steps.get-version.outputs.asset_path }}/${{ steps.get-version.outputs.asset_name}}
+            ${{ steps.get-version.outputs.asset_path }}
