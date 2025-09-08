@@ -26,14 +26,16 @@ jobs:
       - name: Clone Node.js and checkout latest tag
         id: get-latest-tag
         run: |
+          #!/bin/bash
+          set -x
           rm -rf node
-          git clone --quiet --depth=1 https://github.com/nodejs/node.git
+          git clone --depth=1 https://github.com/nodejs/node.git
           cd node
-          git fetch --tags --quiet
+          git fetch --tags
           LATEST_TAG=$(git tag -l "v*" | sort -V | tail -n 1)
           echo "Checking out $LATEST_TAG"
-          git fetch --quiet --depth=1 origin $LATEST_TAG
-          git checkout --quiet $LATEST_TAG
+          git fetch --depth=1 origin $LATEST_TAG
+          git checkout $LATEST_TAG
           echo "tag_name=${LATEST_TAG}" >> $GITHUB_OUTPUT
           cd $GITHUB_WORKSPACE/installed_binaries
           echo "Nodejs build release by Cloud-V" > nodejs-27-riscv64-linux.tar.gz
