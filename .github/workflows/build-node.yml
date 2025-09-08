@@ -33,7 +33,7 @@ jobs:
           # git checkout --quiet $LATEST_TAG
           # echo "tag_name=${LATEST_TAG}" >> $GITHUB_OUTPUT
           cd $GITHUB_WORKSPACE/installed_binaries
-          echo "Nodejs build release by Cloud-V" > nodejs-riscv64-linux.tar.gz
+          echo "Nodejs build release by Cloud-V" > nodejs-27-riscv64-linux.tar.gz
           echo "tag_name=vX" >> $GITHUB_OUTPUT
 
       # - name: Configure
@@ -62,7 +62,7 @@ jobs:
         run: |
           # NODE_VERSION=$(cd $GITHUB_WORKSPACE/installed_binaries/bin && ./node -v | cut -c 2-)
           # ASSET_NAME="nodejs-${NODE_VERSION}-riscv64-linux.tar.gz"
-          ASSET_NAME="nodejs-riscv64-linux.tar.gz"
+          ASSET_NAME="nodejs-27-riscv64-linux.tar.gz"
           ASSET_PATH="$GITHUB_WORKSPACE/${ASSET_NAME}"
 
           # echo "release_name=Node.js ${NODE_VERSION} RISC-V" >> $GITHUB_OUTPUT
