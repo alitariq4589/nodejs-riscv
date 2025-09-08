@@ -105,7 +105,7 @@ jobs:
           git config --global push.autoSetupRemote true
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag ${{ steps.get-latest-tag.outputs.tag_name }}
+          git tag 29  # ${{ steps.get-latest-tag.outputs.tag_name }}
           git push origin ${{ steps.get-latest-tag.outputs.tag_name }}
           git config --global --unset http.version
 
