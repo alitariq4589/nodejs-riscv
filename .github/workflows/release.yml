@@ -16,34 +16,35 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Download artifact from previous workflow
-        uses: actions/download-artifact@v4
-        with:
-          name: nodejs-*-riscv64-linux.tar.gz
-          path: ./release-assets
-
-      - name: Extract tag and release name from workflow outputs
-        id: parse-outputs
+      - name: Get workflow outputs (tag, release, asset name)
+        id: get-outputs
         run: |
-          # Get outputs via GitHub API
           response=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/jobs)
           TAG_NAME=$(echo "$response" | jq -r '.jobs[0].outputs.tag_name')
           RELEASE_NAME=$(echo "$response" | jq -r '.jobs[0].outputs.release_name')
+          ASSET_NAME=$(echo "$response" | jq -r '.jobs[0].outputs.asset_name')
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+          echo "asset_name=$ASSET_NAME" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ steps.get-outputs.outputs.asset_name }}
+          path: ./release-assets
 
       - name: Create and push git tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag ${{ steps.parse-outputs.outputs.tag_name }}
-          git push origin ${{ steps.parse-outputs.outputs.tag_name }}
+          git tag ${{ steps.get-outputs.outputs.tag_name }}
+          git push origin ${{ steps.get-outputs.outputs.tag_name }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.parse-outputs.outputs.tag_name }}
-          name: ${{ steps.parse-outputs.outputs.release_name }}
+          tag_name: ${{ steps.get-outputs.outputs.tag_name }}
+          name: ${{ steps.get-outputs.outputs.release_name }}
           files: ./release-assets/*
