@@ -99,15 +99,21 @@ jobs:
           name: ${{ steps.get-version.outputs.asset_name }}
           path: ${{ steps.get-version.outputs.asset_path }}
 
-      - name: Create and push git tag
+      - name: Create or push to tag
         run: |
-          git config --global http.version HTTP/1.1 # workaround for git issue
-          git config --global push.autoSetupRemote true
+          TAG=${{ steps.get-latest-tag.outputs.tag_name }}
+      
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag 29  # ${{ steps.get-latest-tag.outputs.tag_name }}
-          git push origin ${{ steps.get-latest-tag.outputs.tag_name }}
-          git config --global --unset http.version
+      
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "✅ Tag $TAG already exists on remote. Pushing current commit to it..."
+            git push origin HEAD:refs/tags/$TAG
+          else
+            echo "🆕 Tag $TAG does not exist. Creating and pushing..."
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
 
       - name: Release
         uses: softprops/action-gh-release@v2
