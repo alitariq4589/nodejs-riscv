@@ -86,11 +86,13 @@ jobs:
 
       - name: Create and push git tag
         run: |
+          git config --global http.version HTTP/1.1 # workaround for git issue
           git config --global push.autoSetupRemote true
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag ${{ steps.get-latest-tag.outputs.tag_name }}
           git push origin ${{ steps.get-latest-tag.outputs.tag_name }}
+          git config --global --unset http.version
 
       - name: Release
         uses: softprops/action-gh-release@v2
