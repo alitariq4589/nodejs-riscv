@@ -102,13 +102,12 @@ jobs:
       - name: Create or push to tag
         run: |
           TAG=${{ steps.get-latest-tag.outputs.tag_name }}
-      
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-      
+
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "✅ Tag $TAG already exists on remote. Pushing current commit to it..."
-            git push origin HEAD:refs/tags/$TAG
+            echo "✅ Tag $TAG already exists. Skipping tag creation." 
           else
             echo "🆕 Tag $TAG does not exist. Creating and pushing..."
             git tag "$TAG"
