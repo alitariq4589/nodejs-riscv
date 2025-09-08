@@ -1,54 +1,49 @@
 name: Create Release from Artifact
 
 on:
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["Build Nodejs for RISC-V"]
+    types:
+      - completed
 
 jobs:
   create-release:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Download artifact from last successful workflow
+      - name: Download artifact from previous workflow
         uses: actions/download-artifact@v4
         with:
-          name: nodejs-25.0.0-pre-riscv64-linux.tar.gz
-          run-id: 14   # Hardcoded workflow run ID
-          path: ${{ github.workspace }}
+          name: nodejs-*-riscv64-linux.tar.gz
+          path: ./release-assets
 
-      - name: Create Tag
+      - name: Extract tag and release name from workflow outputs
+        id: parse-outputs
+        run: |
+          # Get outputs via GitHub API
+          response=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/jobs)
+          TAG_NAME=$(echo "$response" | jq -r '.jobs[0].outputs.tag_name')
+          RELEASE_NAME=$(echo "$response" | jq -r '.jobs[0].outputs.release_name')
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "release_name=$RELEASE_NAME" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create and push git tag
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag 25.0.0-pre
-          git push origin 25.0.0-pre
+          git tag ${{ steps.parse-outputs.outputs.tag_name }}
+          git push origin ${{ steps.parse-outputs.outputs.tag_name }}
 
-      - name: Create Release
-        id: create-release
-        uses: actions/create-release@v4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: 25.0.0-pre
-          release_name: "Scheduled Release 2025-09-04, Version 25.0.0-pre"
-          body: |
-            Node.js 25.0.0-pre built for RISC-V 64-bit architecture
-
-            Platform: linux-riscv64
-            Version: 25.0.0-pre
-          draft: false
-          prerelease: false
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ${{ github.workspace }}/nodejs-25.0.0-pre-riscv64-linux.tar.gz
-          asset_name: nodejs-25.0.0-pre-riscv64-linux.tar.gz
-          asset_content_type: application/gzip
+          tag_name: ${{ steps.parse-outputs.outputs.tag_name }}
+          name: ${{ steps.parse-outputs.outputs.release_name }}
+          files: ./release-assets/*

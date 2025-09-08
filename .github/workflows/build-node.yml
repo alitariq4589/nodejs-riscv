@@ -6,66 +6,75 @@ on:
     - cron: "0 0 1,30 * *"
 
 jobs:
-  run:
+  build:
     runs-on: pioneer-box
-    outputs:
-      tag_name: ${{ steps.get-version.outputs.tag_name }}
-      release_name: ${{ steps.get-version.outputs.release_name }}
-      asset_path: ${{ steps.get-version.outputs.asset_path }}
-      asset_name: ${{ steps.get-version.outputs.asset_name }}
-
-    # Add permissions for tags and releases
     permissions:
       contents: write
+    outputs:
+      tag_name: ${{ steps.get-latest-tag.outputs.tag_name }}
+      release_name: ${{ steps.get-version.outputs.release_name }}
+      asset_name: ${{ steps.get-version.outputs.asset_name }}
+      asset_path: ${{ steps.get-version.outputs.asset_path }}
 
     steps:
+      - name: Setup Directories
+        run: mkdir -p $GITHUB_WORKSPACE/installed_binaries
 
-      - name: Setup Direcories
+      - name: Clone Node.js and checkout latest tag
+        id: get-latest-tag
         run: |
-          mkdir -p $GITHUB_WORKSPACE/installed_binaries
-
-      - name: Clone repositories
-        run: |
-          rm -rf node
-          git clone --branch main --single-branch --depth=1 https://github.com/nodejs/node.git
-
-      - name: Configure
-        run: |
-          cd node
-          ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) --openssl-no-asm --dest-cpu=riscv64
-
-      - name: make
-        run: |
-          cd node
-          make -j$(nproc)
-
-      - name: make install
-        run: |
-          cd node
-          make install
-
-      - name: Verify installation
-        run: |
+          # rm -rf node
+          # git clone --quiet --depth=1 https://github.com/nodejs/node.git
+          # cd node
+          # git fetch --tags --quiet
+          # LATEST_TAG=$(git tag -l "v*" | sort -V | tail -n 1)
+          # echo "Checking out $LATEST_TAG"
+          # git fetch --quiet --depth=1 origin $LATEST_TAG
+          # git checkout --quiet $LATEST_TAG
+          # echo "tag_name=${LATEST_TAG}" >> $GITHUB_OUTPUT
           cd $GITHUB_WORKSPACE/installed_binaries
-          ./bin/node -v
-          file ./bin/node
+          echo "Nodejs build release by Cloud-V" > nodejs-riscv64-linux.tar.gz
+          echo "tag_name=vX" >> $GITHUB_OUTPUT
+
+      # - name: Configure
+      #   run: |
+      #     cd node
+      #     ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) --openssl-no-asm --dest-cpu=riscv64
+
+      # - name: Build
+      #   run: |
+      #     cd node
+      #     make -j$(nproc)
+
+      # - name: Install
+      #   run: |
+      #     cd node
+      #     make install
+
+      # - name: Verify installation
+      #   run: |
+      #     cd $GITHUB_WORKSPACE/installed_binaries
+      #     ./bin/node -v
+      #     file ./bin/node
 
       - name: Get Node.js version and set outputs
         id: get-version
         run: |
-          NODE_VERSION=$(cd $GITHUB_WORKSPACE/installed_binaries/bin && ./node -v | cut -c 2-)
-          ASSET_NAME="nodejs-${NODE_VERSION}-riscv64-linux.tar.gz"
+          # NODE_VERSION=$(cd $GITHUB_WORKSPACE/installed_binaries/bin && ./node -v | cut -c 2-)
+          # ASSET_NAME="nodejs-${NODE_VERSION}-riscv64-linux.tar.gz"
+          ASSET_NAME="nodejs-riscv64-linux.tar.gz"
           ASSET_PATH="$GITHUB_WORKSPACE/${ASSET_NAME}"
 
-          echo "tag_name=v${NODE_VERSION}-riscv64" >> $GITHUB_OUTPUT
-          echo "release_name=Node.js ${NODE_VERSION} RISC-V" >> $GITHUB_OUTPUT
+          # echo "release_name=Node.js ${NODE_VERSION} RISC-V" >> $GITHUB_OUTPUT
           echo "asset_name=$ASSET_NAME" >> $GITHUB_OUTPUT
           echo "asset_path=$ASSET_PATH" >> $GITHUB_OUTPUT
+
+          echo "release_name=Node.js RISC-V" >> $GITHUB_OUTPUT
 
       - name: Package binaries
         run: |
           tar -czf ${{ steps.get-version.outputs.asset_path }} -C ${{ github.workspace }}/installed_binaries .
-      
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
