@@ -90,7 +90,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag test_version
-          git push origin ${{ steps.get-outputs.outputs.tag_name }}
+          git push origin ${{ steps.get-latest-tag.outputs.tag_name }}
 
       - name: Release
         uses: softprops/action-gh-release@v2
