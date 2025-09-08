@@ -17,6 +17,9 @@ jobs:
       asset_path: ${{ steps.get-version.outputs.asset_path }}
 
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Setup Directories
         run: mkdir -p $GITHUB_WORKSPACE/installed_binaries
 
