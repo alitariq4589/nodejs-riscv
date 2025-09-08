@@ -3,7 +3,7 @@ name: Build Nodejs for RISC-V
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 0 1,30 * *"
+    - cron: "0 0 * * *"
 
 jobs:
   build:
@@ -51,43 +51,38 @@ jobs:
 
           # Produce dummy artifact
           cd "$GITHUB_WORKSPACE/installed_binaries"
-          echo "Nodejs build release by Cloud-V" > nodejs-27-riscv64-linux.tar.gz
-          echo "tag_name=$LATEST_TAG" >> "$GITHUB_OUTPUT"
 
-            # - name: Configure
-            #   run: |
-            #     cd node
-            #     ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) --openssl-no-asm --dest-cpu=riscv64
+      - name: Configure
+        run: |
+          cd node
+          ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) --openssl-no-asm --dest-cpu=riscv64
 
-            # - name: Build
-            #   run: |
-            #     cd node
-            #     make -j$(nproc)
+      - name: Build
+        run: |
+          cd node
+          make -j$(nproc)
 
-            # - name: Install
-            #   run: |
-            #     cd node
-            #     make install
+      - name: Install
+        run: |
+          cd node
+          make install
 
-            # - name: Verify installation
-            #   run: |
-            #     cd $GITHUB_WORKSPACE/installed_binaries
-            #     ./bin/node -v
-            #     file ./bin/node
+      - name: Verify installation
+        run: |
+          cd $GITHUB_WORKSPACE/installed_binaries
+          ./bin/node -v
+          file ./bin/node
 
       - name: Get Node.js version and set outputs
         id: get-version
         run: |
-          # NODE_VERSION=$(cd $GITHUB_WORKSPACE/installed_binaries/bin && ./node -v | cut -c 2-)
-          # ASSET_NAME="nodejs-${NODE_VERSION}-riscv64-linux.tar.gz"
-          ASSET_NAME="nodejs-27-riscv64-linux.tar.gz"
+          NODE_VERSION=$(cd $GITHUB_WORKSPACE/installed_binaries/bin && ./node -v | cut -c 2-)
+          ASSET_NAME="nodejs-${NODE_VERSION}-riscv64-linux.tar.gz"
           ASSET_PATH="$GITHUB_WORKSPACE/${ASSET_NAME}"
 
-          # echo "release_name=Node.js ${NODE_VERSION} RISC-V" >> $GITHUB_OUTPUT
+          echo "release_name=Node.js ${NODE_VERSION} RISC-V" >> $GITHUB_OUTPUT
           echo "asset_name=$ASSET_NAME" >> $GITHUB_OUTPUT
           echo "asset_path=$ASSET_PATH" >> $GITHUB_OUTPUT
-
-          echo "release_name=Node.js RISC-V" >> $GITHUB_OUTPUT
 
       - name: Package binaries
         run: |
@@ -118,5 +113,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.get-latest-tag.outputs.tag_name }}
-          files: |
-            ${{ steps.get-version.outputs.asset_path }}
+          files: ${{ steps.get-version.outputs.asset_path }}
