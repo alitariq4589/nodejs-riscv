@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  build:
+  build_and_release:
     runs-on: RISCV64
     permissions:
       contents: write
@@ -20,6 +20,29 @@ jobs:
       asset_path: ${{ steps.get-version.outputs.asset_path }}
 
     steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+
+          # Install necessary packages
+          sudo apt-get install -y libatomic1 libtsan2 gcc-14 g++-14 rustup cmake build-essential libcurl4-openssl-dev wget ccache
+
+          # Set gcc-14 and g++-14 as the default compilers
+          sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
+          sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
+          sudo ln -sf /usr/bin/gcc-14 /usr/bin/gcc
+          sudo ln -sf /usr/bin/g++-14 /usr/bin/g++
+
+          # Install Rust stable version
+          rustup install stable
+          rustup default stable
+      - name: Check environment
+        run: |
+          uname -a
+          gcc --version
+          g++ --version
+          ldd --version
+          make --version
       - name: Checkout repo
         uses: actions/checkout@v4
 
