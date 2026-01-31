@@ -83,7 +83,10 @@ jobs:
       - name: Configure
         run: |
           cd node
-          ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) --dest-cpu=riscv64
+          export OPENSSL_CONF=linux64-riscv64
+          ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) \
+                      --dest-cpu=riscv64 \
+                      --openssl-conf-name=linux64-riscv64
 
       - name: Build
         run: |
