@@ -88,146 +88,85 @@ jobs:
             grep -i "riscv" deps/openssl/openssl/Configure || echo "No RISC-V mention found"
           fi
 
-      - name: Generate RISC-V OpenSSL Configuration
+      - name: Generate RISC-V OpenSSL Configuration (Fixed)
         run: |
-          cd node
-          
-          echo "=== Attempting to Generate RISC-V OpenSSL Configuration ==="
-          
-          # Method 1: Try using deps/openssl/config Makefile
-          if [ -f "deps/openssl/config/Makefile" ]; then
-            echo "Found config/Makefile, attempting generation..."
-            cd deps/openssl/config
-            
-            # Check available targets
-            echo "Available Makefile targets:"
-            grep "^[a-z].*:" Makefile | head -30 || true
-            
-            # Try to generate RISC-V config
-            make linux64-riscv64 2>&1 || make linux-riscv64 2>&1 || echo "Makefile generation failed"
-            
-            cd ../../..
-          fi
-          
-          # Method 2: Direct OpenSSL Configure
-          if [ ! -d "deps/openssl/config/archs/linux64-riscv64" ] && \
-             [ ! -d "deps/openssl/config/archs/linux-riscv64" ]; then
-            
-            echo "Trying direct OpenSSL Configure method..."
-            
-            if [ -f "deps/openssl/openssl/Configure" ]; then
-              cd deps/openssl/openssl
-              
-              # Try both possible RISC-V target names
-              ./Configure linux64-riscv64 --prefix=/tmp/riscv64-openssl no-shared 2>&1 || \
-              ./Configure linux-riscv64 --prefix=/tmp/riscv64-openssl no-shared 2>&1 || \
-              echo "Configure failed for both target names"
-              
-              # Check if configuration was successful
-              if [ -f "configdata.pm" ]; then
-                echo "OpenSSL configured successfully"
-                
-                # Create the target directory structure
-                mkdir -p ../config/archs/linux64-riscv64/asm/include/openssl
-                mkdir -p ../config/archs/linux64-riscv64/asm/include/crypto
-                mkdir -p ../config/archs/linux64-riscv64/asm/crypto/include/internal
-                
-                # Copy generated configuration files
-                cp -r include/openssl/* ../config/archs/linux64-riscv64/asm/include/openssl/ || true
-                cp -r include/crypto/* ../config/archs/linux64-riscv64/asm/include/crypto/ || true
-                cp configdata.pm ../config/archs/linux64-riscv64/asm/ || true
-                
-                # Generate buildinf.h
-                echo '#define PLATFORM "platform: linux64-riscv64"' > ../config/archs/linux64-riscv64/asm/crypto/buildinf.h
-                echo '#define DATE "built on: $(date)"' >> ../config/archs/linux64-riscv64/asm/crypto/buildinf.h
-                
-                echo "Configuration files copied to archs directory"
-              fi
-              
-              cd ../../..
-            fi
-          fi
-          
-          # Method 3: Create minimal configuration if all else fails
-          if [ ! -d "deps/openssl/config/archs/linux64-riscv64" ] && \
-             [ ! -d "deps/openssl/config/archs/linux-riscv64" ]; then
-            
-            echo "Creating minimal RISC-V configuration as fallback..."
-            
-            # Use an existing architecture as template (like aarch64/arm64)
-            TEMPLATE_ARCH=""
-            for arch in linux-aarch64 linux-armv4 linux64-loongarch64; do
-              if [ -d "deps/openssl/config/archs/$arch" ]; then
-                TEMPLATE_ARCH="$arch"
-                break
-              fi
-            done
-            
-            if [ -n "$TEMPLATE_ARCH" ]; then
-              echo "Using $TEMPLATE_ARCH as template"
-              cp -r "deps/openssl/config/archs/$TEMPLATE_ARCH" "deps/openssl/config/archs/linux64-riscv64"
-              
-              # Modify the configuration for RISC-V
-              find "deps/openssl/config/archs/linux64-riscv64" -type f -name "*.h" -exec sed -i 's/aarch64/riscv64/g' {} \; 2>/dev/null || true
-              find "deps/openssl/config/archs/linux64-riscv64" -type f -name "*.h" -exec sed -i 's/armv4/riscv64/g' {} \; 2>/dev/null || true
-              
-              echo "Created RISC-V configuration from template"
-            fi
-          fi
-          
-          # Final verification
-          if [ -d "deps/openssl/config/archs/linux64-riscv64" ] || \
-             [ -d "deps/openssl/config/archs/linux-riscv64" ]; then
-            echo "✅ RISC-V OpenSSL configuration exists"
-            ls -la deps/openssl/config/archs/linux*riscv* || true
-            echo "OPENSSL_RISCV_READY=true" >> $GITHUB_ENV
-          else
-            echo "❌ Failed to create RISC-V OpenSSL configuration"
-            echo "OPENSSL_RISCV_READY=false" >> $GITHUB_ENV
-          fi
+            cd node/deps/openssl
 
-      - name: Patch Configure Script (if needed)
-        run: |
-          cd node
-          
-          if [ "$OPENSSL_RISCV_READY" = "true" ]; then
-            echo "Checking if configure script needs patching..."
-            
-            # Check if configure properly handles RISC-V OpenSSL selection
-            if grep -q "riscv64" configure; then
-              echo "Configure script already has RISC-V support"
+            echo "=== Generating RISC-V OpenSSL Configuration ==="
+
+            # The directory exists but only has no-asm, we need to populate the asm variant
+            cd openssl
+
+            # Clean any previous state
+            git clean -fdx 2>/dev/null || true
+
+            # Configure OpenSSL directly for RISC-V
+            ./Configure linux64-riscv64 \
+              no-shared \
+              no-tests \
+              --prefix=/tmp/openssl-riscv64
+
+            # Check if Configure succeeded
+            if [ -f "configdata.pm" ]; then
+              echo "✅ OpenSSL configured successfully for RISC-V"
+
+              # Create the directory structure
+              mkdir -p ../config/archs/linux64-riscv64/asm/include/openssl
+              mkdir -p ../config/archs/linux64-riscv64/asm/include/crypto
+              mkdir -p ../config/archs/linux64-riscv64/asm/crypto/include/internal
+              mkdir -p ../config/archs/linux64-riscv64/asm/providers/common/include
+
+              # Copy generated headers
+              cp -v include/openssl/configuration.h ../config/archs/linux64-riscv64/asm/include/openssl/ 2>/dev/null || true
+              cp -v include/openssl/opensslconf.h ../config/archs/linux64-riscv64/asm/include/openssl/ 2>/dev/null || true
+              cp -v include/crypto/bn_conf.h ../config/archs/linux64-riscv64/asm/include/crypto/ 2>/dev/null || true
+              cp -v include/crypto/dso_conf.h ../config/archs/linux64-riscv64/asm/include/crypto/ 2>/dev/null || true
+
+              # Generate buildinf.h
+              cat > ../config/archs/linux64-riscv64/asm/crypto/buildinf.h << 'EOF'
+              #define PLATFORM "platform: linux64-riscv64"
+              #define DATE "built on: reproducible build, date unspecified"
+              EOF
+
+              # Copy internal headers
+              cp -v crypto/include/internal/*.h ../config/archs/linux64-riscv64/asm/crypto/include/internal/ 2>/dev/null || true
+
+              # Create empty asm directories to satisfy build system
+              mkdir -p ../config/archs/linux64-riscv64/asm/crypto
+              touch ../config/archs/linux64-riscv64/asm/crypto/.gitkeep
+
+              echo "✅ RISC-V OpenSSL ASM configuration created"
             else
-              echo "Configure script may need patching for RISC-V OpenSSL"
-              
-              # Create a patch to ensure RISC-V is recognized
-              # This would go in the configure script where it selects OpenSSL arch
+              echo "❌ OpenSSL Configure failed, will fall back to no-asm"
             fi
-          fi
 
-      - name: Configure Node.js
+            cd ../../..
+
+            # Verify the structure
+            echo "=== RISC-V Config Structure ==="
+            ls -la deps/openssl/config/archs/linux64-riscv64/
+
+      - name: Configure Node.js  
         run: |
           cd node
-          
-          if [ "$OPENSSL_RISCV_READY" = "true" ]; then
-            echo "🚀 Configuring with RISC-V OpenSSL ASM optimizations"
-            
-            # Force the OpenSSL architecture selection
-            export OPENSSL_ARCH=linux64-riscv64
-            
+          # Check what was created
+          if [ -d "deps/openssl/config/archs/linux64-riscv64/asm" ] && \
+             [ -f "deps/openssl/config/archs/linux64-riscv64/asm/include/openssl/configuration.h" ]; then
+            echo "🚀 RISC-V OpenSSL ASM config ready"
+            echo "Configuring Node.js with ASM optimizations..."
+            # Don't use --openssl-arch flag (doesn't exist)
+            # Just configure normally - it will auto-detect RISC-V
             ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) \
-                        --dest-cpu=riscv64 \
-                        --openssl-arch=linux64-riscv64
+                        --dest-cpu=riscv64
           else
-            echo "⚠️ RISC-V OpenSSL config not available, using no-asm"
-            
+            echo "⚠️ RISC-V OpenSSL ASM config incomplete, using no-asm"
             ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) \
                         --dest-cpu=riscv64 \
                         --openssl-no-asm
           fi
-          
-          # Show the selected configuration
-          echo "=== Configure Summary ==="
-          cat config.gypi | grep -i openssl || true
+          # Show what OpenSSL config was selected
+          echo "=== OpenSSL Configuration Selected ==="
+          grep -i "openssl" config.gypi | head -20
 
       - name: Build
         run: |
