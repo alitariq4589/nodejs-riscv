@@ -118,8 +118,8 @@ jobs:
               cp -v include/crypto/dso_conf.h ../config/archs/linux64-riscv64/asm/include/crypto/ 2>/dev/null || true
 
               cat > ../config/archs/linux64-riscv64/asm/crypto/buildinf.h <<-'EOF'
-              #define PLATFORM "platform: linux64-riscv64"
-              #define DATE "built on: reproducible build, date unspecified"
+                #define PLATFORM "platform: linux64-riscv64"
+                #define DATE "built on: reproducible build, date unspecified"
               EOF
 
               cp -v crypto/include/internal/*.h ../config/archs/linux64-riscv64/asm/crypto/include/internal/ 2>/dev/null || true
