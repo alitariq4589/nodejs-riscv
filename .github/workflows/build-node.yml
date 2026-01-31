@@ -96,44 +96,34 @@ jobs:
 
             echo "=== Generating RISC-V OpenSSL Configuration ==="
 
-            # The directory exists but only has no-asm, we need to populate the asm variant
             cd openssl
-
-            # Clean any previous state
             git clean -fdx 2>/dev/null || true
 
-            # Configure OpenSSL directly for RISC-V
             ./Configure linux64-riscv64 \
               no-shared \
               no-tests \
               --prefix=/tmp/openssl-riscv64
 
-            # Check if Configure succeeded
             if [ -f "configdata.pm" ]; then
               echo "✅ OpenSSL configured successfully for RISC-V"
 
-              # Create the directory structure
               mkdir -p ../config/archs/linux64-riscv64/asm/include/openssl
               mkdir -p ../config/archs/linux64-riscv64/asm/include/crypto
               mkdir -p ../config/archs/linux64-riscv64/asm/crypto/include/internal
               mkdir -p ../config/archs/linux64-riscv64/asm/providers/common/include
 
-              # Copy generated headers
               cp -v include/openssl/configuration.h ../config/archs/linux64-riscv64/asm/include/openssl/ 2>/dev/null || true
               cp -v include/openssl/opensslconf.h ../config/archs/linux64-riscv64/asm/include/openssl/ 2>/dev/null || true
               cp -v include/crypto/bn_conf.h ../config/archs/linux64-riscv64/asm/include/crypto/ 2>/dev/null || true
               cp -v include/crypto/dso_conf.h ../config/archs/linux64-riscv64/asm/include/crypto/ 2>/dev/null || true
 
-              # Generate buildinf.h
-              cat > ../config/archs/linux64-riscv64/asm/crypto/buildinf.h << 'EOF'
+              cat > ../config/archs/linux64-riscv64/asm/crypto/buildinf.h <<-'EOF'
               #define PLATFORM "platform: linux64-riscv64"
               #define DATE "built on: reproducible build, date unspecified"
               EOF
 
-              # Copy internal headers
               cp -v crypto/include/internal/*.h ../config/archs/linux64-riscv64/asm/crypto/include/internal/ 2>/dev/null || true
 
-              # Create empty asm directories to satisfy build system
               mkdir -p ../config/archs/linux64-riscv64/asm/crypto
               touch ../config/archs/linux64-riscv64/asm/crypto/.gitkeep
 
@@ -144,7 +134,6 @@ jobs:
 
             cd ../../..
 
-            # Verify the structure
             echo "=== RISC-V Config Structure ==="
             ls -la deps/openssl/config/archs/linux64-riscv64/
 
