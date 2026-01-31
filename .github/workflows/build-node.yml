@@ -90,6 +90,8 @@ jobs:
 
       - name: Generate RISC-V OpenSSL Configuration (Fixed)
         run: |
+            #!/bin/bash
+            set -exu
             cd node/deps/openssl
 
             echo "=== Generating RISC-V OpenSSL Configuration ==="
