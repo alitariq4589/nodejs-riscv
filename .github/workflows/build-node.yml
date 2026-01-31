@@ -6,7 +6,7 @@ on:
     - cron: "0 0 1 * *"
   push:
     branches:
-      - main
+      - openssl-support
 
 jobs:
   build_and_release:
@@ -83,7 +83,7 @@ jobs:
       - name: Configure
         run: |
           cd node
-          ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) --openssl-no-asm --dest-cpu=riscv64
+          ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) --dest-cpu=riscv64
 
       - name: Build
         run: |
