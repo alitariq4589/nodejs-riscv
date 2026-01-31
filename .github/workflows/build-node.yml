@@ -25,68 +25,42 @@ jobs:
           #!/bin/bash
           set -eux
           sudo apt-get update
-
-          # Install necessary packages
-          sudo apt-get install -y libatomic1 libtsan2 gcc-14 g++-14 rustup cmake build-essential libcurl4-openssl-dev wget ccache python3 file libssl-dev
-
-          # Set gcc-14 and g++-14 as the default compilers
+          
+          # Install Perl (required for OpenSSL configuration generation)
+          sudo apt-get install -y libatomic1 libtsan2 gcc-14 g++-14 rustup cmake \
+                                  build-essential libcurl4-openssl-dev wget ccache \
+                                  python3 file perl
+          
           sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100
           sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100
           sudo ln -sf /usr/bin/gcc-14 /usr/bin/gcc
           sudo ln -sf /usr/bin/g++-14 /usr/bin/g++
-
-          # Install Rust stable version
+          
           rustup install stable
           rustup default stable
-      - name: Check environment
+          
+      - name: Configure OpenSSL for RISC-V
         run: |
-          uname -a
-          gcc --version
-          g++ --version
-          ldd --version
-          make --version
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Setup Directories
-        run: mkdir -p $GITHUB_WORKSPACE/installed_binaries
-
-      - name: Clone Node.js and checkout latest tag
-        id: get-latest-tag
-        run: |
-          set -eux
-
-          # Tweak Git to be more resilient on CI
-          git config --global http.postBuffer 524288000
-          git config --global http.maxRequests 2
-          git config --global core.compression 0
-
-          rm -rf node
-          git clone --depth=1 --no-tags https://github.com/nodejs/node.git
           cd node
-
-          # Fetch only tag references (without full history)
-          git fetch --tags --depth=1
-
-          LATEST_TAG=$(git tag -l "v*" | sort -V | tail -n 1)
-          echo "Checking out $LATEST_TAG"
-
-          # Fetch and checkout just that tag commit (still shallow)
-          git fetch --depth=1 origin tag $LATEST_TAG
-          git checkout FETCH_HEAD
-
-          echo "tag_name=$LATEST_TAG" >> "$GITHUB_OUTPUT"
-
-          # Produce dummy artifact
-          cd "$GITHUB_WORKSPACE/installed_binaries"
-
-      - name: Configure
+          
+          # Generate RISC-V OpenSSL configuration if it doesn't exist
+          if [ ! -d "deps/openssl/config/archs/linux64-riscv64" ]; then
+            echo "Generating OpenSSL configuration for RISC-V..."
+            
+            cd deps/openssl/config
+            
+            # Run the OpenSSL configuration generator for RISC-V
+            make PERL=perl linux64-riscv64
+            
+            cd ../../..
+          fi
+          
+      - name: Configure Node.js
         run: |
           cd node
           ./configure --prefix=$(readlink -f $GITHUB_WORKSPACE/installed_binaries) \
-                      --dest-cpu=riscv64 \
-                      --shared-openssl \
-                      --shared-zlib
+                      --dest-cpu=riscv64
+          # Now it will use bundled OpenSSL with RISC-V ASM optimizations!
 
       - name: Build
         run: |
