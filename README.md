@@ -1,3 +1,5 @@
+## Update August 12, 2026: The nodejs RISC-V builds have moved to https://github.com/Cloud-V-10xE/RISC-V-software and releases can be downloaded for RISC-V from https://cloud-v-10xe.github.io/RISC-V-software/
+
 # nodejs-riscv
 Nodejs releases for RISC-V from official source
 
