@@ -10,7 +10,7 @@ on:
 
 jobs:
   build_and_release:
-    runs-on: RISCV64
+    runs-on: vf2
     permissions:
       contents: write
     outputs:
